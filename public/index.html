@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ファイルアップロード</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: #f5f7fa;
+      margin: 0;
+      padding: 2rem 1rem;
+      color: #222;
+    }
+    .container {
+      max-width: 560px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+    }
+    h1 { margin-top: 0; font-size: 1.5rem; }
+    .dropzone {
+      border: 2px dashed #b4bccb;
+      border-radius: 10px;
+      padding: 2rem 1rem;
+      text-align: center;
+      color: #6b7280;
+      background: #fafbfd;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .dropzone.dragover {
+      border-color: #3b82f6;
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+    .dropzone input { display: none; }
+    .file-name {
+      margin-top: .75rem;
+      font-size: .9rem;
+      color: #374151;
+      word-break: break-all;
+    }
+    button {
+      margin-top: 1rem;
+      width: 100%;
+      padding: .75rem 1rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      background: #3b82f6;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:disabled { background: #94a3b8; cursor: not-allowed; }
+    .result {
+      margin-top: 1rem;
+      padding: .75rem 1rem;
+      border-radius: 8px;
+      font-size: .9rem;
+      display: none;
+    }
+    .result.ok { background: #ecfdf5; color: #065f46; display: block; }
+    .result.err { background: #fef2f2; color: #991b1b; display: block; }
+    .files {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e5e7eb;
+    }
+    .files h2 { font-size: 1rem; margin: 0 0 .5rem; }
+    .files ul { list-style: none; padding: 0; margin: 0; }
+    .files li {
+      padding: .4rem 0;
+      font-size: .85rem;
+      color: #4b5563;
+      border-bottom: 1px solid #f3f4f6;
+      word-break: break-all;
+    }
+    .files li:last-child { border-bottom: none; }
+    .muted { color: #9ca3af; font-size: .8rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ファイルアップロード</h1>
+    <p class="muted">最大 10MB まで。クリックまたはドラッグ&ドロップでファイルを選択してください。</p>
+
+    <form id="upload-form">
+      <label class="dropzone" id="dropzone">
+        <div id="dz-text">ここをクリック、またはファイルをドロップ</div>
+        <div class="file-name" id="file-name"></div>
+        <input type="file" name="file" id="file-input" required />
+      </label>
+      <button type="submit" id="submit-btn" disabled>アップロード</button>
+    </form>
+
+    <div class="result" id="result"></div>
+
+    <div class="files">
+      <h2>アップロード済みファイル</h2>
+      <ul id="file-list"><li class="muted">読み込み中...</li></ul>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('upload-form');
+    const input = document.getElementById('file-input');
+    const dropzone = document.getElementById('dropzone');
+    const fileName = document.getElementById('file-name');
+    const submitBtn = document.getElementById('submit-btn');
+    const result = document.getElementById('result');
+    const fileList = document.getElementById('file-list');
+
+    function updateFileName() {
+      if (input.files && input.files[0]) {
+        fileName.textContent = `${input.files[0].name} (${formatSize(input.files[0].size)})`;
+        submitBtn.disabled = false;
+      } else {
+        fileName.textContent = '';
+        submitBtn.disabled = true;
+      }
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+    }
+
+    input.addEventListener('change', updateFileName);
+
+    ['dragenter', 'dragover'].forEach((evt) =>
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      })
+    );
+    ['dragleave', 'drop'].forEach((evt) =>
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+      })
+    );
+    dropzone.addEventListener('drop', (e) => {
+      if (e.dataTransfer.files.length) {
+        input.files = e.dataTransfer.files;
+        updateFileName();
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!input.files[0]) return;
+      const fd = new FormData();
+      fd.append('file', input.files[0]);
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'アップロード中...';
+      result.className = 'result';
+      try {
+        const res = await fetch('/upload', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.ok) {
+          result.className = 'result ok';
+          result.textContent = `アップロード成功: ${data.originalName} (${formatSize(data.size)})`;
+          form.reset();
+          updateFileName();
+          loadFiles();
+        } else {
+          result.className = 'result err';
+          result.textContent = `エラー: ${data.error || '不明なエラー'}`;
+        }
+      } catch (err) {
+        result.className = 'result err';
+        result.textContent = `通信エラー: ${err.message}`;
+      } finally {
+        submitBtn.textContent = 'アップロード';
+        submitBtn.disabled = !input.files[0];
+      }
+    });
+
+    async function loadFiles() {
+      try {
+        const res = await fetch('/files');
+        const data = await res.json();
+        if (data.ok && data.files.length) {
+          fileList.innerHTML = data.files
+            .sort((a, b) => new Date(b.mtime) - new Date(a.mtime))
+            .map((f) => `<li>${escapeHtml(f.name)} <span class="muted">(${formatSize(f.size)})</span></li>`)
+            .join('');
+        } else {
+          fileList.innerHTML = '<li class="muted">まだファイルはありません</li>';
+        }
+      } catch (err) {
+        fileList.innerHTML = `<li class="muted">読み込みエラー: ${err.message}</li>`;
+      }
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    loadFiles();
+  </script>
+</body>
+</html>
