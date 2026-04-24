@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""米国 物流施設（Industrial）売買取引量マップを PNG で出力"""
+"""米国 物流施設（Industrial）売買取引量マップを PNG で出力
+   - 州境、主要Interstate（Major Highway）、鉄道網を背景に重ねる
+   - 主要マーケットの年間取引額を円サイズで表現
+"""
 import json
 from pathlib import Path
 
@@ -7,12 +10,13 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon as MplPolygon
-from matplotlib.collections import PatchCollection
+from matplotlib.collections import PatchCollection, LineCollection
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.lines import Line2D
 import matplotlib.font_manager as fm
 
 # 日本語フォント
-jp_font_path = "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf"
-jp_font = fm.FontProperties(fname=jp_font_path)
+jp_font = fm.FontProperties(fname="/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf")
 
 # 主要米国産業用不動産マーケット（年間取引額 $B, MSCI/RCA・CBRE・JLL 等の公開資料より）
 markets = [
@@ -48,106 +52,142 @@ markets = [
     ("San Antonio",                 29.42,  -98.49,  0.7),
 ]
 
-# US states GeoJSON 読み込み
-geo = json.loads(Path("/tmp/us_states.json").read_text())
+# 本土 bbox
+BBOX = (-125, 24, -66, 50)  # west, south, east, north
 
+def in_bbox(lon, lat):
+    return BBOX[0] <= lon <= BBOX[2] and BBOX[1] <= lat <= BBOX[3]
+
+def line_in_bbox(coords):
+    return any(in_bbox(x, y) for x, y in coords)
+
+# --- 州ポリゴン ---
+geo = json.loads(Path("/tmp/us_states.json").read_text())
+EXCLUDE = {"Alaska", "Hawaii", "Puerto Rico"}
+state_patches = []
+for feat in geo["features"]:
+    if feat["properties"]["name"] in EXCLUDE:
+        continue
+    g = feat["geometry"]
+    polys = g["coordinates"] if g["type"] == "MultiPolygon" else [g["coordinates"]]
+    for poly in polys:
+        state_patches.append(MplPolygon(poly[0], closed=True))
+
+# --- 鉄道（Natural Earth, 北米→US bbox フィルタ）---
+rail = json.loads(Path("/tmp/ne_rail.json").read_text())
+rail_segments = []
+for f in rail["features"]:
+    if f["properties"].get("continent") != "North America":
+        continue
+    g = f["geometry"]
+    lines = g["coordinates"] if g["type"] == "MultiLineString" else [g["coordinates"]]
+    for line in lines:
+        if line_in_bbox(line):
+            rail_segments.append(line)
+
+# --- 主要高速道路（Interstate 相当: 'Major Highway' かつ US） ---
+roads = json.loads(Path("/tmp/ne_roads.json").read_text())
+hwy_segments = []
+for f in roads["features"]:
+    p = f["properties"]
+    if p.get("sov_a3") != "USA":
+        continue
+    if p.get("type") != "Major Highway":
+        continue
+    g = f["geometry"]
+    lines = g["coordinates"] if g["type"] == "MultiLineString" else [g["coordinates"]]
+    for line in lines:
+        if line_in_bbox(line):
+            hwy_segments.append(line)
+
+# --- 描画 ---
 fig, ax = plt.subplots(figsize=(16, 10), dpi=140)
 
-# 州ポリゴンを描画（アラスカ・ハワイ・プエルトリコは除外して本土のみ表示）
-EXCLUDE = {"Alaska", "Hawaii", "Puerto Rico"}
-patches = []
-for feat in geo["features"]:
-    name = feat["properties"]["name"]
-    if name in EXCLUDE:
-        continue
-    geom = feat["geometry"]
-    coords_list = geom["coordinates"]
-    if geom["type"] == "Polygon":
-        coords_list = [coords_list]
-    for poly in coords_list:
-        ring = poly[0]
-        patches.append(MplPolygon(ring, closed=True))
-
-pc = PatchCollection(patches, facecolor="#eef2f7", edgecolor="#94a3b8", linewidths=0.6)
+# 州
+pc = PatchCollection(state_patches, facecolor="#f1f4f9",
+                     edgecolor="#94a3b8", linewidths=0.6, zorder=1)
 ax.add_collection(pc)
 
-# バブル（面積が取引量に比例）
+# 鉄道（薄い灰色、細線）
+rail_lc = LineCollection(rail_segments, colors="#6b7280",
+                         linewidths=0.35, alpha=0.55, zorder=2)
+ax.add_collection(rail_lc)
+
+# 高速道路（オレンジ系、やや太線）
+hwy_lc = LineCollection(hwy_segments, colors="#ef6c00",
+                        linewidths=0.9, alpha=0.85, zorder=3)
+ax.add_collection(hwy_lc)
+
+# バブル（取引額）
 max_vol = max(m[3] for m in markets)
-# 面積 s (matplotlib scatter is area in points^2)
-size_scale = 2400.0 / max_vol  # 最大バブルを s≈2400pt^2
+size_scale = 2400.0 / max_vol
+cmap = LinearSegmentedColormap.from_list("ind", ["#60a5fa", "#2563eb", "#1e3a8a"])
 
 lats = [m[1] for m in markets]
 lons = [m[2] for m in markets]
 vols = [m[3] for m in markets]
 sizes = [v * size_scale for v in vols]
 
-from matplotlib.colors import LinearSegmentedColormap
-cmap = LinearSegmentedColormap.from_list(
-    "ind", ["#60a5fa", "#2563eb", "#1e3a8a"]
-)
-sc = ax.scatter(
-    lons, lats,
-    s=sizes,
-    c=vols,
-    cmap=cmap,
-    vmin=0, vmax=max_vol,
-    alpha=0.85,
-    edgecolor="#0b1f4d",
-    linewidth=0.8,
-    zorder=3,
-)
+sc = ax.scatter(lons, lats, s=sizes, c=vols, cmap=cmap,
+                vmin=0, vmax=max_vol, alpha=0.88,
+                edgecolor="#0b1f4d", linewidth=0.9, zorder=5)
 
-# 上位5マーケットにラベル
+# 上位5マーケットのラベル
 top5 = sorted(markets, key=lambda m: -m[3])[:5]
 for name, lat, lon, vol in top5:
     short = name.split(" / ")[0].split("–")[0]
     ax.annotate(
         f"{short}\n${vol:.1f}B",
-        xy=(lon, lat),
-        xytext=(0, -22),
-        textcoords="offset points",
-        ha="center", va="top",
-        fontsize=9,
-        color="#0f172a",
-        fontproperties=jp_font,
-        zorder=4,
+        xy=(lon, lat), xytext=(0, -24), textcoords="offset points",
+        ha="center", va="top", fontsize=9, color="#0f172a",
+        fontproperties=jp_font, zorder=6,
+        bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.7),
     )
 
-# カラーバー
+# カラーバー（取引額）
 cbar = plt.colorbar(sc, ax=ax, shrink=0.55, pad=0.01)
 cbar.set_label("取引額 ($B)", fontproperties=jp_font, fontsize=11)
 
-# 凡例（円サイズ）
-legend_vols = [2, 5, 10]
-for i, v in enumerate(legend_vols):
-    ax.scatter([], [], s=v * size_scale, c="#3182bd", alpha=0.78,
-               edgecolor="white", linewidth=1.0, label=f"${v}B")
-leg = ax.legend(
-    scatterpoints=1, frameon=True, labelspacing=1.6,
-    title="取引額", loc="lower left", borderpad=1.0,
-)
-leg.get_title().set_fontproperties(jp_font)
-for text in leg.get_texts():
-    text.set_fontproperties(jp_font)
+# 凡例 1: バブルサイズ
+bubble_handles = [
+    plt.scatter([], [], s=v * size_scale, c="#2563eb",
+                edgecolor="#0b1f4d", linewidth=0.8, alpha=0.85, label=f"${v}B")
+    for v in (2, 5, 10)
+]
+# 凡例 2: 線種
+line_handles = [
+    Line2D([0], [0], color="#ef6c00", lw=2.0, label="主要高速道路 (Interstate)"),
+    Line2D([0], [0], color="#6b7280", lw=1.2, alpha=0.7, label="鉄道網"),
+]
 
-# 本土の表示範囲
-ax.set_xlim(-125, -66)
-ax.set_ylim(24, 50)
+leg1 = ax.legend(handles=bubble_handles, title="取引額",
+                 loc="lower left", labelspacing=1.6, borderpad=1.0, frameon=True)
+leg1.get_title().set_fontproperties(jp_font)
+for t in leg1.get_texts(): t.set_fontproperties(jp_font)
+ax.add_artist(leg1)
+
+leg2 = ax.legend(handles=line_handles, title="インフラ",
+                 loc="lower right", frameon=True)
+leg2.get_title().set_fontproperties(jp_font)
+for t in leg2.get_texts(): t.set_fontproperties(jp_font)
+
+# 表示範囲
+ax.set_xlim(BBOX[0], BBOX[2])
+ax.set_ylim(BBOX[1], BBOX[3])
 ax.set_aspect("auto")
 ax.set_xticks([]); ax.set_yticks([])
-for spine in ax.spines.values():
-    spine.set_visible(False)
+for sp in ax.spines.values(): sp.set_visible(False)
 
 ax.set_title(
-    "米国 物流施設（Industrial）売買取引量  ― 主要マーケット別年間取引額",
+    "米国 物流施設（Industrial）売買取引量  ×  主要インフラ（Interstate ／ 鉄道網）",
     fontproperties=jp_font, fontsize=15, pad=12,
 )
 fig.text(
     0.5, 0.03,
-    "出典: MSCI Real Capital Analytics / CBRE / JLL 等の公開レポートに基づく代表値（概算）",
+    "出典: 取引量=MSCI/RCA・CBRE・JLL 等の公開レポート代表値（概算）／ インフラ=Natural Earth 1:10m",
     ha="center", fontproperties=jp_font, fontsize=9, color="#555",
 )
 
 out = Path("/home/user/Claude/us_industrial_transactions_map.png")
 plt.savefig(out, bbox_inches="tight", facecolor="white")
-print(f"saved: {out}")
+print(f"saved: {out}  rail={len(rail_segments)} hwy={len(hwy_segments)}")
