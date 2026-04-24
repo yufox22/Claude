@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>米国 物流施設（Industrial）売買取引量マップ</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  body {
+    font-family: "Helvetica Neue", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #f7f8fa;
+    color: #222;
+  }
+  h1 {
+    font-size: 20px;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 16px;
+  }
+  #map {
+    width: 100%;
+    height: 78vh;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .note {
+    font-size: 11px;
+    color: #888;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+  <h1>米国 物流施設（Industrial）売買取引量</h1>
+  <div class="subtitle">主要マーケット別 年間取引額（円のサイズ＝取引ボリューム、単位: 10億米ドル）</div>
+  <div id="map"></div>
+  <div class="note">
+    ※ データは MSCI Real Capital Analytics／CBRE／JLL 等の公開レポートに基づく代表値（概算）。実データで置換可能です。
+  </div>
+
+<script>
+// 主要な米国産業用不動産マーケットの年間取引額（概算, $B）
+// 出典: MSCI/RCA, CBRE, JLL 等の公開資料に基づく代表値
+const markets = [
+  { name: "Los Angeles / Inland Empire", state: "CA", lat: 34.05, lon: -117.75, vol: 12.0 },
+  { name: "Northern New Jersey",         state: "NJ", lat: 40.74, lon: -74.17,  vol: 7.5  },
+  { name: "Dallas–Fort Worth",           state: "TX", lat: 32.78, lon: -96.80,  vol: 7.2  },
+  { name: "Chicago",                     state: "IL", lat: 41.85, lon: -87.65,  vol: 6.1  },
+  { name: "Atlanta",                     state: "GA", lat: 33.75, lon: -84.39,  vol: 5.0  },
+  { name: "Phoenix",                     state: "AZ", lat: 33.45, lon: -112.07, vol: 4.5  },
+  { name: "Pennsylvania I-78/I-81",      state: "PA", lat: 40.63, lon: -75.60,  vol: 4.0  },
+  { name: "Houston",                     state: "TX", lat: 29.76, lon: -95.37,  vol: 3.6  },
+  { name: "Seattle",                     state: "WA", lat: 47.61, lon: -122.33, vol: 3.1  },
+  { name: "South Florida (Miami)",       state: "FL", lat: 25.77, lon: -80.19,  vol: 3.0  },
+  { name: "SF Bay Area / Oakland",       state: "CA", lat: 37.80, lon: -122.27, vol: 2.6  },
+  { name: "Indianapolis",                state: "IN", lat: 39.77, lon: -86.16,  vol: 2.5  },
+  { name: "Columbus",                    state: "OH", lat: 39.96, lon: -82.99,  vol: 2.4  },
+  { name: "Nashville",                   state: "TN", lat: 36.16, lon: -86.78,  vol: 2.0  },
+  { name: "Memphis",                     state: "TN", lat: 35.15, lon: -90.05,  vol: 1.8  },
+  { name: "Kansas City",                 state: "MO", lat: 39.10, lon: -94.58,  vol: 1.8  },
+  { name: "Denver",                      state: "CO", lat: 39.74, lon: -104.99, vol: 1.7  },
+  { name: "Boston",                      state: "MA", lat: 42.36, lon: -71.06,  vol: 1.6  },
+  { name: "Charlotte",                   state: "NC", lat: 35.23, lon: -80.84,  vol: 1.5  },
+  { name: "Baltimore",                   state: "MD", lat: 39.29, lon: -76.61,  vol: 1.5  },
+  { name: "Minneapolis",                 state: "MN", lat: 44.98, lon: -93.27,  vol: 1.3  },
+  { name: "Cincinnati",                  state: "OH", lat: 39.10, lon: -84.51,  vol: 1.2  },
+  { name: "Las Vegas",                   state: "NV", lat: 36.17, lon: -115.14, vol: 1.2  },
+  { name: "Portland",                    state: "OR", lat: 45.52, lon: -122.68, vol: 1.1  },
+  { name: "Orlando",                     state: "FL", lat: 28.54, lon: -81.38,  vol: 1.0  },
+  { name: "Tampa",                       state: "FL", lat: 27.95, lon: -82.46,  vol: 1.0  },
+  { name: "Salt Lake City",              state: "UT", lat: 40.76, lon: -111.89, vol: 1.0  },
+  { name: "Austin",                      state: "TX", lat: 30.27, lon: -97.74,  vol: 0.9  },
+  { name: "Reno",                        state: "NV", lat: 39.53, lon: -119.81, vol: 0.8  },
+  { name: "San Antonio",                 state: "TX", lat: 29.42, lon: -98.49,  vol: 0.7  }
+];
+
+// バブルサイズ：面積が取引量に比例するように半径計算
+const maxVol = Math.max(...markets.map(m => m.vol));
+const sizeRef = 2 * maxVol / (55 ** 2); // 最大直径 ~55px
+
+const trace = {
+  type: "scattergeo",
+  locationmode: "USA-states",
+  lon: markets.map(m => m.lon),
+  lat: markets.map(m => m.lat),
+  text: markets.map(m =>
+    `<b>${m.name}</b><br>州: ${m.state}<br>取引額: $${m.vol.toFixed(1)}B`
+  ),
+  hovertemplate: "%{text}<extra></extra>",
+  marker: {
+    size: markets.map(m => m.vol),
+    sizemode: "area",
+    sizeref: sizeRef,
+    sizemin: 4,
+    color: markets.map(m => m.vol),
+    colorscale: [
+      [0,   "#9ecae1"],
+      [0.5, "#3182bd"],
+      [1,   "#08306b"]
+    ],
+    cmin: 0,
+    cmax: maxVol,
+    line: { color: "rgba(255,255,255,0.8)", width: 1 },
+    opacity: 0.85,
+    colorbar: {
+      title: { text: "取引額<br>($B)", font: { size: 12 } },
+      thickness: 12,
+      len: 0.6,
+      x: 0.95
+    }
+  },
+  name: "Industrial transactions"
+};
+
+// 上位5マーケットのラベルを追加
+const topMarkets = [...markets].sort((a,b) => b.vol - a.vol).slice(0,5);
+const labelTrace = {
+  type: "scattergeo",
+  mode: "text",
+  lon: topMarkets.map(m => m.lon),
+  lat: topMarkets.map(m => m.lat - 1.8),
+  text: topMarkets.map(m => `${m.name.split(" / ")[0].split("–")[0]}<br>$${m.vol.toFixed(1)}B`),
+  textfont: { size: 10, color: "#1f2937" },
+  hoverinfo: "skip",
+  showlegend: false
+};
+
+const layout = {
+  geo: {
+    scope: "usa",
+    projection: { type: "albers usa" },
+    showland: true,
+    landcolor: "#eef2f7",
+    subunitcolor: "#cbd5e1",
+    countrycolor: "#94a3b8",
+    showlakes: true,
+    lakecolor: "#dbeafe",
+    showsubunits: true,
+    bgcolor: "#ffffff"
+  },
+  margin: { l: 0, r: 0, t: 10, b: 10 },
+  paper_bgcolor: "#ffffff",
+  plot_bgcolor: "#ffffff"
+};
+
+Plotly.newPlot("map", [trace, labelTrace], layout, { responsive: true, displaylogo: false });
+</script>
+</body>
+</html>
