@@ -3,111 +3,195 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>物件3Dプロット | 価格 × 販売スピード × ボリューム</title>
+<title>Indonesia Property 3D | 価格 × 販売スピード × ボリューム</title>
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg-0: #07090f;
+    --bg-1: #0c111c;
+    --panel: rgba(20, 27, 45, 0.72);
+    --border: rgba(120, 150, 255, 0.14);
+    --text: #e8ecf6;
+    --text-dim: #8a94ad;
+    --accent: #4f8cff;
+    --accent-2: #00d4b8;
+    --accent-3: #ff5e7d;
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
-    background: #f4f6f9;
-    color: #1f2d3d;
+    font-family: "Inter", "Noto Sans JP", sans-serif;
+    background:
+      radial-gradient(1100px 500px at 85% -10%, rgba(79,140,255,.16), transparent 60%),
+      radial-gradient(800px 500px at -10% 110%, rgba(0,212,184,.10), transparent 60%),
+      var(--bg-0);
+    color: var(--text);
+    min-height: 100vh;
   }
   header {
-    background: #1f2d3d;
-    color: #fff;
-    padding: 14px 24px;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding: 20px 28px 12px;
   }
-  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
-  header p { margin: 4px 0 0; font-size: 12px; color: #aebacb; }
+  header .brand {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: .02em;
+    background: linear-gradient(90deg, #fff 20%, var(--accent) 60%, var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  header .sub {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+  .badge {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent-2);
+    border: 1px solid rgba(0,212,184,.35);
+    border-radius: 999px;
+    padding: 4px 12px;
+    background: rgba(0,212,184,.07);
+  }
   .container {
     display: flex;
-    gap: 16px;
-    padding: 16px 24px;
-    align-items: flex-start;
+    gap: 18px;
+    padding: 8px 28px 24px;
+    align-items: stretch;
   }
   .panel {
-    background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 1px 4px rgba(0,0,0,.08);
-    padding: 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 12px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);
   }
   .controls {
-    width: 280px;
+    width: 290px;
     flex-shrink: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
   }
   .controls h2 {
-    font-size: 13px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
     margin: 0 0 12px;
-    color: #5b6b7f;
-    border-bottom: 1px solid #e4e9f0;
-    padding-bottom: 8px;
   }
-  .control-group { margin-bottom: 16px; }
+  .controls h2:not(:first-child) { margin-top: 22px; }
+  .control-group { margin-bottom: 14px; }
   .control-group label {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 12px;
     font-weight: 600;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    color: var(--text);
   }
   .axis-tag {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
     font-size: 10px;
-    padding: 1px 6px;
-    border-radius: 4px;
-    color: #fff;
-    margin-right: 6px;
-    vertical-align: middle;
+    font-weight: 800;
+    border-radius: 5px;
+    color: #060810;
   }
-  .tag-x { background: #e74c3c; }
-  .tag-y { background: #27ae60; }
-  .tag-z { background: #2980b9; }
-  select, input[type="range"] {
+  .tag-x { background: var(--accent-3); box-shadow: 0 0 10px rgba(255,94,125,.5); }
+  .tag-y { background: var(--accent-2); box-shadow: 0 0 10px rgba(0,212,184,.5); }
+  .tag-z { background: var(--accent);  box-shadow: 0 0 10px rgba(79,140,255,.55); }
+  select {
     width: 100%;
-    padding: 6px;
-    border: 1px solid #ccd5e0;
-    border-radius: 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
     font-size: 13px;
-    background: #fff;
+    font-family: inherit;
+    background: rgba(8,12,22,.8);
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s;
   }
+  select:hover, select:focus { border-color: rgba(79,140,255,.5); }
   .checkbox-row {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     font-size: 12px;
-    margin-top: 6px;
+    color: var(--text);
   }
-  #plot-wrap { flex: 1; min-width: 0; }
-  #plot { width: 100%; height: 78vh; }
-  .legend-note {
-    font-size: 11px;
-    color: #7a899b;
-    margin-top: 8px;
-    line-height: 1.6;
+  .checkbox-row input { accent-color: var(--accent); }
+  #plot-wrap {
+    flex: 1;
+    min-width: 0;
+    padding: 10px;
+    overflow: hidden;
   }
+  #plot { width: 100%; height: 80vh; }
   .stats {
-    font-size: 12px;
-    line-height: 1.8;
-    color: #44546a;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .stat-card {
+    background: rgba(8,12,22,.6);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+  }
+  .stat-card .v {
+    font-size: 16px;
+    font-weight: 800;
+    background: linear-gradient(90deg, #fff, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .stat-card .k {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .legend-note {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    margin-top: auto;
+    padding-top: 16px;
+    line-height: 1.7;
   }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>物件 3Dプロット — 価格 × 販売スピード × ボリューム</h1>
-  <p>プロトタイプ v0.1（サンプルデータ20件）｜ドラッグで回転、ホイールでズーム、点にホバーで詳細表示</p>
+  <span class="brand">INDONESIA PROPERTY 3D</span>
+  <span class="sub">価格 × 販売スピード × ボリューム｜Jabodetabek＋主要都市</span>
+  <span class="badge">Prototype v0.2</span>
 </header>
 
 <div class="container">
   <div class="panel controls">
-    <h2>軸の設定</h2>
+    <h2>Axis</h2>
 
     <div class="control-group">
       <label><span class="axis-tag tag-x">X</span>価格</label>
       <select id="xAxis">
-        <option value="avgPrice">平均価格（万円）</option>
-        <option value="tsuboPrice">坪単価（万円/坪）</option>
+        <option value="avgPrice">平均価格（億ルピア）</option>
+        <option value="sqmPrice">㎡単価（百万ルピア/㎡）</option>
       </select>
     </div>
 
@@ -127,12 +211,13 @@
       </select>
     </div>
 
-    <h2>表示オプション</h2>
+    <h2>Display</h2>
 
     <div class="control-group">
       <label>色分け</label>
       <select id="colorBy">
         <option value="area">エリア別</option>
+        <option value="type">物件タイプ別</option>
         <option value="status">販売ステータス別</option>
       </select>
     </div>
@@ -146,18 +231,18 @@
       </select>
     </div>
 
-    <div class="control-group">
-      <div class="checkbox-row">
-        <input type="checkbox" id="showLabels">
-        <label for="showLabels" style="margin:0; font-weight:normal;">物件名を常時表示</label>
-      </div>
+    <div class="control-group checkbox-row">
+      <input type="checkbox" id="showLabels">
+      <label for="showLabels" style="margin:0; font-weight:500;">物件名を常時表示</label>
     </div>
 
-    <h2>データ概要</h2>
+    <h2>Summary</h2>
     <div class="stats" id="stats"></div>
+
     <div class="legend-note">
-      ※ データはダミーです。実データ（CSV等）に差し替え可能。<br>
-      ※ 軸の定義・指標は壁打ちしながら調整してください。
+      ※ データはダミー。実データ（CSV等）に差し替え可能<br>
+      ※ ホバーで円換算を表示（1億ルピア ≒ 93万円で簡易換算）<br>
+      ※ 凡例クリックでグループの表示/非表示
     </div>
   </div>
 
@@ -167,46 +252,58 @@
 </div>
 
 <script>
-// ===== サンプルデータ =====
-// 実データに差し替える場合はこの配列を置き換えるだけでOK
+// ===== サンプルデータ（インドネシア・ダミー） =====
+// avgPrice: 億ルピア(= Rp 100 juta x 100 → miliar x 10)表記。例 25 = Rp 2.5 miliar
+// sqmPrice: 百万ルピア/㎡（juta/m²）
 const properties = [
-  { name: "パークサイド品川",     area: "都心",   status: "完売",   avgPrice: 9800,  tsuboPrice: 520, unitsPerMonth: 12.5, monthsToSellout: 8,  totalUnits: 100, siteArea: 2400 },
-  { name: "グランタワー豊洲",     area: "湾岸",   status: "販売中", avgPrice: 8200,  tsuboPrice: 450, unitsPerMonth: 18.0, monthsToSellout: 25, totalUnits: 450, siteArea: 8500 },
-  { name: "シティテラス武蔵小杉", area: "城南",   status: "完売",   avgPrice: 7100,  tsuboPrice: 410, unitsPerMonth: 10.2, monthsToSellout: 22, totalUnits: 224, siteArea: 5100 },
-  { name: "レジデンス青山",       area: "都心",   status: "完売",   avgPrice: 15500, tsuboPrice: 780, unitsPerMonth: 4.5,  monthsToSellout: 12, totalUnits: 54,  siteArea: 1300 },
-  { name: "ガーデンズ浦和",       area: "埼玉",   status: "販売中", avgPrice: 5400,  tsuboPrice: 280, unitsPerMonth: 6.8,  monthsToSellout: 18, totalUnits: 120, siteArea: 4200 },
-  { name: "ブリリア晴海",         area: "湾岸",   status: "完売",   avgPrice: 8900,  tsuboPrice: 470, unitsPerMonth: 22.0, monthsToSellout: 30, totalUnits: 660, siteArea: 12000 },
-  { name: "プラウド吉祥寺",       area: "城西",   status: "完売",   avgPrice: 8600,  tsuboPrice: 460, unitsPerMonth: 5.5,  monthsToSellout: 14, totalUnits: 77,  siteArea: 2100 },
-  { name: "シーサイド千葉NT",     area: "千葉",   status: "販売中", avgPrice: 4200,  tsuboPrice: 195, unitsPerMonth: 4.0,  monthsToSellout: 35, totalUnits: 140, siteArea: 6800 },
-  { name: "ヒルズ横浜山手",       area: "神奈川", status: "完売",   avgPrice: 6800,  tsuboPrice: 350, unitsPerMonth: 7.2,  monthsToSellout: 13, totalUnits: 94,  siteArea: 3600 },
-  { name: "ステーションコート大宮", area: "埼玉", status: "完売",   avgPrice: 5900,  tsuboPrice: 310, unitsPerMonth: 9.5,  monthsToSellout: 16, totalUnits: 152, siteArea: 3900 },
-  { name: "リバーシティ北千住",   area: "城東",   status: "販売中", avgPrice: 5600,  tsuboPrice: 300, unitsPerMonth: 8.0,  monthsToSellout: 24, totalUnits: 190, siteArea: 4800 },
-  { name: "フォレスト多摩センター", area: "城西", status: "販売中", avgPrice: 4800,  tsuboPrice: 230, unitsPerMonth: 3.2,  monthsToSellout: 40, totalUnits: 128, siteArea: 7200 },
-  { name: "ベイフロント有明",     area: "湾岸",   status: "販売中", avgPrice: 7800,  tsuboPrice: 430, unitsPerMonth: 15.0, monthsToSellout: 28, totalUnits: 420, siteArea: 9300 },
-  { name: "サンクレスト柏の葉",   area: "千葉",   status: "完売",   avgPrice: 4900,  tsuboPrice: 240, unitsPerMonth: 7.5,  monthsToSellout: 20, totalUnits: 150, siteArea: 5500 },
-  { name: "アトラス神楽坂",       area: "都心",   status: "完売",   avgPrice: 11200, tsuboPrice: 620, unitsPerMonth: 3.8,  monthsToSellout: 10, totalUnits: 38,  siteArea: 900  },
-  { name: "オーシャンズ川崎",     area: "神奈川", status: "販売中", avgPrice: 6200,  tsuboPrice: 330, unitsPerMonth: 11.0, monthsToSellout: 21, totalUnits: 230, siteArea: 5600 },
-  { name: "グリーンヒル八王子",   area: "城西",   status: "販売中", avgPrice: 3900,  tsuboPrice: 180, unitsPerMonth: 2.5,  monthsToSellout: 45, totalUnits: 110, siteArea: 8800 },
-  { name: "ミッドタワー池袋",     area: "城北",   status: "完売",   avgPrice: 8400,  tsuboPrice: 455, unitsPerMonth: 13.0, monthsToSellout: 19, totalUnits: 250, siteArea: 3200 },
-  { name: "コンフォール船橋",     area: "千葉",   status: "完売",   avgPrice: 4500,  tsuboPrice: 215, unitsPerMonth: 5.8,  monthsToSellout: 17, totalUnits: 98,  siteArea: 4100 },
-  { name: "エクセレンス目黒",     area: "城南",   status: "販売中", avgPrice: 12800, tsuboPrice: 690, unitsPerMonth: 4.2,  monthsToSellout: 15, totalUnits: 62,  siteArea: 1500 },
+  { name: "The Peak Sudirman",        area: "Jakarta CBD",  type: "高層コンド", status: "完売",   avgPrice: 85, sqmPrice: 65, unitsPerMonth: 6.5,  monthsToSellout: 14, totalUnits: 90,  siteArea: 3200 },
+  { name: "Menteng Royal Residence",  area: "Jakarta Pusat", type: "高層コンド", status: "完売",  avgPrice: 72, sqmPrice: 58, unitsPerMonth: 4.2,  monthsToSellout: 16, totalUnits: 68,  siteArea: 2400 },
+  { name: "Kemang Garden Heights",    area: "Jakarta Selatan", type: "中層コンド", status: "販売中", avgPrice: 45, sqmPrice: 42, unitsPerMonth: 8.0, monthsToSellout: 22, totalUnits: 180, siteArea: 6800 },
+  { name: "SCBD Sky Tower",           area: "Jakarta CBD",  type: "高層コンド", status: "販売中", avgPrice: 95, sqmPrice: 72, unitsPerMonth: 5.0,  monthsToSellout: 28, totalUnits: 140, siteArea: 4100 },
+  { name: "BSD Green Terrace",        area: "Tangerang",    type: "タウンハウス", status: "完売", avgPrice: 22, sqmPrice: 18, unitsPerMonth: 14.0, monthsToSellout: 18, totalUnits: 250, siteArea: 42000 },
+  { name: "Alam Sutera Lakeview",     area: "Tangerang",    type: "戸建",       status: "販売中", avgPrice: 28, sqmPrice: 16, unitsPerMonth: 9.5,  monthsToSellout: 24, totalUnits: 230, siteArea: 58000 },
+  { name: "Serpong Mid Park",         area: "Tangerang",    type: "中層コンド", status: "完売",   avgPrice: 14, sqmPrice: 19, unitsPerMonth: 22.0, monthsToSellout: 20, totalUnits: 440, siteArea: 18000 },
+  { name: "Bekasi Grand City",        area: "Bekasi",       type: "戸建",       status: "販売中", avgPrice: 11, sqmPrice: 10, unitsPerMonth: 18.0, monthsToSellout: 30, totalUnits: 540, siteArea: 96000 },
+  { name: "Cikarang Industrial Vista", area: "Bekasi",      type: "タウンハウス", status: "販売中", avgPrice: 8,  sqmPrice: 8,  unitsPerMonth: 12.0, monthsToSellout: 32, totalUnits: 380, siteArea: 72000 },
+  { name: "Depok University Park",    area: "Depok",        type: "中層コンド", status: "完売",   avgPrice: 9,  sqmPrice: 13, unitsPerMonth: 16.0, monthsToSellout: 15, totalUnits: 240, siteArea: 12000 },
+  { name: "Bogor Hill Estate",        area: "Bogor",        type: "戸建",       status: "販売中", avgPrice: 13, sqmPrice: 9,  unitsPerMonth: 6.0,  monthsToSellout: 36, totalUnits: 215, siteArea: 88000 },
+  { name: "Sentul Highland Villas",   area: "Bogor",        type: "戸建",       status: "販売中", avgPrice: 19, sqmPrice: 11, unitsPerMonth: 4.5,  monthsToSellout: 40, totalUnits: 180, siteArea: 110000 },
+  { name: "Pondok Indah Premier",     area: "Jakarta Selatan", type: "高層コンド", status: "完売", avgPrice: 58, sqmPrice: 48, unitsPerMonth: 5.5,  monthsToSellout: 18, totalUnits: 98,  siteArea: 3800 },
+  { name: "Kelapa Gading Bay Walk",   area: "Jakarta Utara", type: "中層コンド", status: "販売中", avgPrice: 26, sqmPrice: 28, unitsPerMonth: 11.0, monthsToSellout: 26, totalUnits: 290, siteArea: 9500 },
+  { name: "PIK Marina Residences",    area: "Jakarta Utara", type: "高層コンド", status: "販売中", avgPrice: 52, sqmPrice: 45, unitsPerMonth: 9.0,  monthsToSellout: 30, totalUnits: 270, siteArea: 7200 },
+  { name: "Surabaya West One",        area: "Surabaya",     type: "高層コンド", status: "完売",   avgPrice: 24, sqmPrice: 25, unitsPerMonth: 10.0, monthsToSellout: 19, totalUnits: 190, siteArea: 5600 },
+  { name: "Pakuwon Sky Loft",         area: "Surabaya",     type: "中層コンド", status: "販売中", avgPrice: 16, sqmPrice: 20, unitsPerMonth: 13.0, monthsToSellout: 23, totalUnits: 300, siteArea: 8800 },
+  { name: "Bandung Valley Homes",     area: "Bandung",      type: "戸建",       status: "完売",   avgPrice: 12, sqmPrice: 12, unitsPerMonth: 7.0,  monthsToSellout: 21, totalUnits: 150, siteArea: 64000 },
+  { name: "Dago Premier Hills",       area: "Bandung",      type: "タウンハウス", status: "販売中", avgPrice: 17, sqmPrice: 15, unitsPerMonth: 3.8,  monthsToSellout: 34, totalUnits: 130, siteArea: 46000 },
+  { name: "Canggu Ocean Villas",      area: "Bali",         type: "ヴィラ",     status: "販売中", avgPrice: 65, sqmPrice: 38, unitsPerMonth: 2.5,  monthsToSellout: 26, totalUnits: 64,  siteArea: 32000 },
+  { name: "Ubud Forest Retreat",      area: "Bali",         type: "ヴィラ",     status: "完売",   avgPrice: 48, sqmPrice: 30, unitsPerMonth: 2.0,  monthsToSellout: 22, totalUnits: 44,  siteArea: 28000 },
+  { name: "Makassar Central Park",    area: "Makassar",     type: "中層コンド", status: "販売中", avgPrice: 10, sqmPrice: 14, unitsPerMonth: 8.5,  monthsToSellout: 28, totalUnits: 235, siteArea: 11000 },
 ];
 
-// ===== 指標の定義（ラベル・単位） =====
+const IDR_OKU_TO_JPY_MAN = 93; // 1億ルピア ≒ 93万円（簡易換算レート）
+
 const metrics = {
-  avgPrice:        { label: "平均価格",     unit: "万円" },
-  tsuboPrice:      { label: "坪単価",       unit: "万円/坪" },
+  avgPrice:        { label: "平均価格",     unit: "億ルピア" },
+  sqmPrice:        { label: "㎡単価",       unit: "百万ルピア/㎡" },
   unitsPerMonth:   { label: "月間販売戸数", unit: "戸/月" },
   monthsToSellout: { label: "完売所要月数", unit: "月" },
   totalUnits:      { label: "総戸数",       unit: "戸" },
   siteArea:        { label: "敷地面積",     unit: "㎡" },
 };
 
-const areaColors = {
-  "都心": "#e74c3c", "湾岸": "#2980b9", "城南": "#27ae60", "城西": "#8e44ad",
-  "城東": "#f39c12", "城北": "#16a085", "神奈川": "#d35400", "埼玉": "#2c3e50", "千葉": "#7f8c8d",
+const palettes = {
+  area: {
+    "Jakarta CBD": "#ff5e7d", "Jakarta Pusat": "#ff9d5c", "Jakarta Selatan": "#ffd166",
+    "Jakarta Utara": "#4f8cff", "Tangerang": "#00d4b8", "Bekasi": "#9d6bff",
+    "Depok": "#5ce1e6", "Bogor": "#7ed957", "Surabaya": "#f06292",
+    "Bandung": "#b39ddb", "Bali": "#26c6da", "Makassar": "#aab6c8",
+  },
+  type: {
+    "高層コンド": "#ff5e7d", "中層コンド": "#4f8cff", "タウンハウス": "#00d4b8",
+    "戸建": "#ffd166", "ヴィラ": "#9d6bff",
+  },
+  status: { "完売": "#00d4b8", "販売中": "#4f8cff" },
 };
-const statusColors = { "完売": "#27ae60", "販売中": "#2980b9" };
 
 function render() {
   const xKey = document.getElementById("xAxis").value;
@@ -216,19 +313,18 @@ function render() {
   const sizeBy = document.getElementById("sizeBy").value;
   const showLabels = document.getElementById("showLabels").checked;
 
-  // 色分けカテゴリでトレースを分ける（凡例クリックで表示切替できるように）
-  const colorMap = colorBy === "area" ? areaColors : statusColors;
+  const colorMap = palettes[colorBy];
   const groups = {};
   properties.forEach(p => {
-    const key = colorBy === "area" ? p.area : p.status;
+    const key = p[colorBy];
     (groups[key] = groups[key] || []).push(p);
   });
 
   const sizeValues = p => {
-    if (sizeBy === "fixed") return 9;
+    if (sizeBy === "fixed") return 10;
     const vals = properties.map(q => q[sizeBy]);
     const min = Math.min(...vals), max = Math.max(...vals);
-    return 6 + 22 * (p[sizeBy] - min) / (max - min);
+    return 7 + 24 * (p[sizeBy] - min) / (max - min);
   };
 
   const traces = Object.entries(groups).map(([key, items]) => ({
@@ -240,44 +336,63 @@ function render() {
     z: items.map(p => p[zKey]),
     text: items.map(p => p.name),
     textposition: "top center",
-    textfont: { size: 9, color: "#44546a" },
+    textfont: { size: 9, color: "#aab6c8" },
     hovertemplate:
       "<b>%{customdata[0]}</b><br>" +
       `${metrics[xKey].label}: %{x:,.0f} ${metrics[xKey].unit}<br>` +
       `${metrics[yKey].label}: %{y:,.1f} ${metrics[yKey].unit}<br>` +
       `${metrics[zKey].label}: %{z:,.0f} ${metrics[zKey].unit}<br>` +
-      "エリア: %{customdata[1]}｜%{customdata[2]}<extra></extra>",
-    customdata: items.map(p => [p.name, p.area, p.status]),
+      "平均価格 円換算: 約%{customdata[3]:,.0f}万円<br>" +
+      "%{customdata[1]}｜%{customdata[2]}<extra></extra>",
+    customdata: items.map(p => [p.name, `${p.area} / ${p.type}`, p.status, p.avgPrice * IDR_OKU_TO_JPY_MAN]),
     marker: {
       size: items.map(p => sizeValues(p)),
-      color: colorMap[key] || "#95a5a6",
-      opacity: 0.85,
-      line: { color: "#fff", width: 0.5 },
+      color: colorMap[key] || "#aab6c8",
+      opacity: 0.92,
+      line: { color: "rgba(255,255,255,.35)", width: 0.8 },
     },
   }));
 
+  const axisStyle = title => ({
+    title: { text: title, font: { size: 11, color: "#aab6c8" } },
+    gridcolor: "rgba(120,150,255,.14)",
+    zerolinecolor: "rgba(120,150,255,.25)",
+    showbackground: true,
+    backgroundcolor: "rgba(12,17,28,.55)",
+    tickfont: { size: 10, color: "#8a94ad" },
+  });
+
   const layout = {
-    margin: { l: 0, r: 0, t: 10, b: 0 },
+    paper_bgcolor: "rgba(0,0,0,0)",
+    margin: { l: 0, r: 0, t: 6, b: 0 },
     scene: {
-      xaxis: { title: { text: `${metrics[xKey].label}（${metrics[xKey].unit}）` }, gridcolor: "#dde4ec" },
-      yaxis: { title: { text: `${metrics[yKey].label}（${metrics[yKey].unit}）` }, gridcolor: "#dde4ec" },
-      zaxis: { title: { text: `${metrics[zKey].label}（${metrics[zKey].unit}）` }, gridcolor: "#dde4ec" },
-      camera: { eye: { x: 1.6, y: 1.6, z: 0.9 } },
+      xaxis: axisStyle(`${metrics[xKey].label}（${metrics[xKey].unit}）`),
+      yaxis: axisStyle(`${metrics[yKey].label}（${metrics[yKey].unit}）`),
+      zaxis: axisStyle(`${metrics[zKey].label}（${metrics[zKey].unit}）`),
+      camera: { eye: { x: 1.7, y: 1.5, z: 0.8 } },
     },
-    legend: { orientation: "h", y: -0.02 },
-    hoverlabel: { bgcolor: "#1f2d3d", font: { color: "#fff", size: 12 } },
+    legend: {
+      orientation: "h", y: -0.02,
+      font: { color: "#e8ecf6", size: 11 },
+      bgcolor: "rgba(0,0,0,0)",
+    },
+    hoverlabel: {
+      bgcolor: "rgba(10,14,24,.95)",
+      bordercolor: "rgba(79,140,255,.5)",
+      font: { color: "#e8ecf6", size: 12, family: "Inter, Noto Sans JP, sans-serif" },
+    },
   };
 
   Plotly.react("plot", traces, layout, { responsive: true, displaylogo: false });
 
-  // 統計サマリ
   const n = properties.length;
-  const avg = key => (properties.reduce((s, p) => s + p[key], 0) / n);
-  document.getElementById("stats").innerHTML =
-    `物件数: <b>${n}件</b><br>` +
-    `平均価格: <b>${avg("avgPrice").toLocaleString(undefined,{maximumFractionDigits:0})}万円</b><br>` +
-    `平均販売速度: <b>${avg("unitsPerMonth").toFixed(1)}戸/月</b><br>` +
-    `平均総戸数: <b>${avg("totalUnits").toFixed(0)}戸</b>`;
+  const avg = key => properties.reduce((s, p) => s + p[key], 0) / n;
+  document.getElementById("stats").innerHTML = [
+    [n + "件", "物件数"],
+    [avg("avgPrice").toFixed(0) + "億Rp", "平均価格"],
+    [avg("unitsPerMonth").toFixed(1) + "戸/月", "平均販売速度"],
+    [avg("totalUnits").toFixed(0) + "戸", "平均総戸数"],
+  ].map(([v, k]) => `<div class="stat-card"><div class="v">${v}</div><div class="k">${k}</div></div>`).join("");
 }
 
 ["xAxis","yAxis","zAxis","colorBy","sizeBy","showLabels"].forEach(id =>
