@@ -206,9 +206,12 @@
     <div class="control-group">
       <label><span class="axis-tag tag-z">Z</span>ボリューム</label>
       <select id="zAxis">
-        <option value="totalUnits">総戸数（戸）</option>
         <option value="siteArea">敷地面積（㎡）</option>
       </select>
+      <div class="checkbox-row" style="margin-top:6px;">
+        <input type="checkbox" id="logZ" checked>
+        <label for="logZ" style="margin:0; font-weight:500;">対数スケール（桁差が大きいため推奨）</label>
+      </div>
     </div>
 
     <h2>Display</h2>
@@ -226,7 +229,6 @@
       <label>バブルサイズ</label>
       <select id="sizeBy">
         <option value="fixed">固定</option>
-        <option value="totalUnits">総戸数に比例</option>
         <option value="siteArea">敷地面積に比例</option>
       </select>
     </div>
@@ -312,6 +314,7 @@ function render() {
   const colorBy = document.getElementById("colorBy").value;
   const sizeBy = document.getElementById("sizeBy").value;
   const showLabels = document.getElementById("showLabels").checked;
+  const logZ = document.getElementById("logZ").checked;
 
   const colorMap = palettes[colorBy];
   const groups = {};
@@ -368,7 +371,7 @@ function render() {
     scene: {
       xaxis: axisStyle(`${metrics[xKey].label}（${metrics[xKey].unit}）`),
       yaxis: axisStyle(`${metrics[yKey].label}（${metrics[yKey].unit}）`),
-      zaxis: axisStyle(`${metrics[zKey].label}（${metrics[zKey].unit}）`),
+      zaxis: { ...axisStyle(`${metrics[zKey].label}（${metrics[zKey].unit}）${logZ ? "・対数" : ""}`), type: logZ ? "log" : "linear" },
       camera: { eye: { x: 1.7, y: 1.5, z: 0.8 } },
     },
     legend: {
@@ -391,11 +394,11 @@ function render() {
     [n + "件", "物件数"],
     [avg("avgPrice").toFixed(0) + "億Rp", "平均価格"],
     [avg("unitsPerMonth").toFixed(1) + "戸/月", "平均販売速度"],
-    [avg("totalUnits").toFixed(0) + "戸", "平均総戸数"],
+    [(avg("siteArea") / 10000).toFixed(1) + "ha", "平均敷地面積"],
   ].map(([v, k]) => `<div class="stat-card"><div class="v">${v}</div><div class="k">${k}</div></div>`).join("");
 }
 
-["xAxis","yAxis","zAxis","colorBy","sizeBy","showLabels"].forEach(id =>
+["xAxis","yAxis","zAxis","colorBy","sizeBy","showLabels","logZ"].forEach(id =>
   document.getElementById(id).addEventListener("change", render)
 );
 render();
