@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Indonesia Property | 価格 × 販売スピード 時系列プロット</title>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #07090f;
+    --panel: rgba(20, 27, 45, 0.72);
+    --border: rgba(120, 150, 255, 0.14);
+    --text: #e8ecf6;
+    --text-dim: #8a94ad;
+    --accent: #4f8cff;
+    --accent-2: #00d4b8;
+    --accent-3: #ff5e7d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Inter", "Noto Sans JP", sans-serif;
+    background:
+      radial-gradient(1100px 500px at 85% -10%, rgba(79,140,255,.16), transparent 60%),
+      radial-gradient(800px 500px at -10% 110%, rgba(0,212,184,.10), transparent 60%),
+      var(--bg-0);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding: 20px 28px 12px;
+  }
+  header .brand {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: .02em;
+    background: linear-gradient(90deg, #fff 20%, var(--accent) 60%, var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  header .sub { font-size: 12px; color: var(--text-dim); font-weight: 500; }
+  .badge {
+    margin-left: auto;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent-2);
+    border: 1px solid rgba(0,212,184,.35);
+    border-radius: 999px;
+    padding: 4px 12px;
+    background: rgba(0,212,184,.07);
+  }
+  .container {
+    display: flex;
+    gap: 18px;
+    padding: 8px 28px 24px;
+    align-items: stretch;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 12px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .controls { width: 290px; flex-shrink: 0; padding: 20px; display: flex; flex-direction: column; }
+  .controls h2 {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: .18em; text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 0 0 12px;
+  }
+  .controls h2:not(:first-child) { margin-top: 22px; }
+  .control-group { margin-bottom: 14px; }
+  .control-group label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .axis-tag {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px;
+    font-size: 10px; font-weight: 800;
+    border-radius: 5px;
+    color: #060810;
+  }
+  .tag-x { background: var(--accent-3); box-shadow: 0 0 10px rgba(255,94,125,.5); }
+  .tag-y { background: var(--accent-2); box-shadow: 0 0 10px rgba(0,212,184,.5); }
+  .tag-s { background: var(--accent);  box-shadow: 0 0 10px rgba(79,140,255,.55); }
+  select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font-size: 13px;
+    font-family: inherit;
+    background: rgba(8,12,22,.8);
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s;
+  }
+  select:hover, select:focus { border-color: rgba(79,140,255,.5); }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .checkbox-row input { accent-color: var(--accent); }
+  #plot-wrap {
+    flex: 1; min-width: 0;
+    padding: 14px 14px 6px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  #plot { width: 100%; flex: 1; min-height: 0; }
+
+  /* タイムラインバー */
+  .timebar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 14px 12px;
+  }
+  .play-btn {
+    width: 42px; height: 42px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(79,140,255,.5);
+    background: linear-gradient(135deg, rgba(79,140,255,.25), rgba(0,212,184,.18));
+    color: var(--text);
+    font-size: 15px;
+    cursor: pointer;
+    transition: transform .1s, box-shadow .15s;
+    box-shadow: 0 0 16px rgba(79,140,255,.25);
+  }
+  .play-btn:hover { transform: scale(1.08); box-shadow: 0 0 22px rgba(79,140,255,.45); }
+  .time-slider-wrap { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .tick-labels {
+    display: flex; justify-content: space-between;
+    font-size: 9px; color: var(--text-dim);
+  }
+  .current-q {
+    flex-shrink: 0;
+    min-width: 90px;
+    text-align: center;
+    font-size: 20px; font-weight: 800;
+    letter-spacing: .03em;
+    background: linear-gradient(90deg, #fff, var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card {
+    background: rgba(8,12,22,.6);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+  }
+  .stat-card .v {
+    font-size: 16px; font-weight: 800;
+    background: linear-gradient(90deg, #fff, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .stat-card .k { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+  .legend-note {
+    font-size: 10.5px; color: var(--text-dim);
+    margin-top: auto; padding-top: 16px;
+    line-height: 1.7;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="brand">INDONESIA PROPERTY TIMELINE</span>
+  <span class="sub">価格 × 販売スピード（バブル＝敷地面積）｜四半期推移</span>
+  <span class="badge">Prototype v0.4</span>
+</header>
+
+<div class="container">
+  <div class="panel controls">
+    <h2>Axis</h2>
+
+    <div class="control-group">
+      <label><span class="axis-tag tag-x">X</span>価格</label>
+      <select id="xAxis">
+        <option value="avgPrice">平均価格（億ルピア）</option>
+        <option value="sqmPrice">㎡単価（百万ルピア/㎡）</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label><span class="axis-tag tag-y">Y</span>販売スピード</label>
+      <select id="yAxis">
+        <option value="unitsPerMonth">月間販売戸数（戸/月）</option>
+        <option value="absorptionRate">月間消化率（%/月）※規模の影響を除いた速さ</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label><span class="axis-tag tag-s">●</span>バブルサイズ＝敷地面積</label>
+      <div class="checkbox-row">
+        <input type="checkbox" id="sizeOn" checked>
+        <label for="sizeOn" style="margin:0; font-weight:500;">敷地面積に比例（OFFで固定）</label>
+      </div>
+    </div>
+
+    <h2>Display</h2>
+
+    <div class="control-group">
+      <label>色分け</label>
+      <select id="colorBy">
+        <option value="area">エリア別</option>
+        <option value="type">物件タイプ別</option>
+      </select>
+    </div>
+
+    <div class="control-group checkbox-row">
+      <input type="checkbox" id="showTrails" checked>
+      <label for="showTrails" style="margin:0; font-weight:500;">軌跡を表示（販売開始からの推移）</label>
+    </div>
+
+    <div class="control-group checkbox-row">
+      <input type="checkbox" id="showLabels">
+      <label for="showLabels" style="margin:0; font-weight:500;">物件名を常時表示</label>
+    </div>
+
+    <div class="control-group checkbox-row">
+      <input type="checkbox" id="showSoldOut" checked>
+      <label for="showSoldOut" style="margin:0; font-weight:500;">完売物件も表示（グレー）</label>
+    </div>
+
+    <h2>Summary <span id="statsQ" style="letter-spacing:0; color:var(--accent-2);"></span></h2>
+    <div class="stats" id="stats"></div>
+
+    <div class="legend-note">
+      ※ データはダミー（四半期スナップショット形式）。<br>
+      　 実データはCSV→records配列に差し替えるだけ<br>
+      ※ ▶で自動再生、スライダーで任意の四半期へ<br>
+      ※ 完売物件はグレーで最終位置に残ります
+    </div>
+  </div>
+
+  <div class="panel" id="plot-wrap">
+    <div id="plot"></div>
+    <div class="timebar">
+      <button class="play-btn" id="playBtn">▶</button>
+      <div class="time-slider-wrap">
+        <input type="range" id="timeSlider" min="0" max="9" step="1" value="0">
+        <div class="tick-labels" id="tickLabels"></div>
+      </div>
+      <div class="current-q" id="currentQ"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== タイムライン定義 =====
+const quarters = ["2024Q1","2024Q2","2024Q3","2024Q4","2025Q1","2025Q2","2025Q3","2025Q4","2026Q1","2026Q2"];
+
+// ===== 物件マスタ（ダミー） =====
+// launchQ: 販売開始の四半期インデックス（負値=タイムライン開始前に販売開始済み）
+// priceGrowth: 四半期あたり価格上昇率（インドネシアは段階的値上げが一般的）
+const propertyMaster = [
+  { name: "The Peak Sudirman",        area: "Jakarta CBD",     type: "高層コンド",   launchQ: -2, basePrice: 80, baseSqm: 61, basePace: 7.5,  priceGrowth: .020, totalUnits: 90,  siteArea: 3200 },
+  { name: "Menteng Royal Residence",  area: "Jakarta Pusat",   type: "高層コンド",   launchQ: 0,  basePrice: 70, baseSqm: 56, basePace: 5.0,  priceGrowth: .018, totalUnits: 68,  siteArea: 2400 },
+  { name: "Kemang Garden Heights",    area: "Jakarta Selatan", type: "中層コンド",   launchQ: 1,  basePrice: 43, baseSqm: 40, basePace: 9.0,  priceGrowth: .015, totalUnits: 180, siteArea: 6800 },
+  { name: "SCBD Sky Tower",           area: "Jakarta CBD",     type: "高層コンド",   launchQ: 3,  basePrice: 92, baseSqm: 70, basePace: 6.0,  priceGrowth: .022, totalUnits: 140, siteArea: 4100 },
+  { name: "BSD Green Terrace",        area: "Tangerang",       type: "タウンハウス", launchQ: -1, basePrice: 21, baseSqm: 17, basePace: 16.0, priceGrowth: .012, totalUnits: 250, siteArea: 42000 },
+  { name: "Alam Sutera Lakeview",     area: "Tangerang",       type: "戸建",         launchQ: 2,  basePrice: 27, baseSqm: 15, basePace: 11.0, priceGrowth: .013, totalUnits: 230, siteArea: 58000 },
+  { name: "Serpong Mid Park",         area: "Tangerang",       type: "中層コンド",   launchQ: 0,  basePrice: 13, baseSqm: 18, basePace: 24.0, priceGrowth: .010, totalUnits: 440, siteArea: 18000 },
+  { name: "Bekasi Grand City",        area: "Bekasi",          type: "戸建",         launchQ: 1,  basePrice: 10, baseSqm: 9,  basePace: 20.0, priceGrowth: .008, totalUnits: 540, siteArea: 96000 },
+  { name: "Cikarang Industrial Vista", area: "Bekasi",         type: "タウンハウス", launchQ: 4,  basePrice: 8,  baseSqm: 8,  basePace: 13.0, priceGrowth: .008, totalUnits: 380, siteArea: 72000 },
+  { name: "Depok University Park",    area: "Depok",           type: "中層コンド",   launchQ: -1, basePrice: 9,  baseSqm: 12, basePace: 18.0, priceGrowth: .010, totalUnits: 240, siteArea: 12000 },
+  { name: "Bogor Hill Estate",        area: "Bogor",           type: "戸建",         launchQ: 2,  basePrice: 12, baseSqm: 9,  basePace: 7.0,  priceGrowth: .009, totalUnits: 215, siteArea: 88000 },
+  { name: "Sentul Highland Villas",   area: "Bogor",           type: "戸建",         launchQ: 5,  basePrice: 18, baseSqm: 11, basePace: 5.0,  priceGrowth: .010, totalUnits: 180, siteArea: 110000 },
+  { name: "Pondok Indah Premier",     area: "Jakarta Selatan", type: "高層コンド",   launchQ: -2, basePrice: 55, baseSqm: 46, basePace: 6.5,  priceGrowth: .017, totalUnits: 98,  siteArea: 3800 },
+  { name: "Kelapa Gading Bay Walk",   area: "Jakarta Utara",   type: "中層コンド",   launchQ: 3,  basePrice: 25, baseSqm: 27, basePace: 12.0, priceGrowth: .013, totalUnits: 290, siteArea: 9500 },
+  { name: "PIK Marina Residences",    area: "Jakarta Utara",   type: "高層コンド",   launchQ: 2,  basePrice: 50, baseSqm: 43, basePace: 10.0, priceGrowth: .020, totalUnits: 270, siteArea: 7200 },
+  { name: "Surabaya West One",        area: "Surabaya",        type: "高層コンド",   launchQ: 0,  basePrice: 23, baseSqm: 24, basePace: 11.0, priceGrowth: .012, totalUnits: 190, siteArea: 5600 },
+  { name: "Pakuwon Sky Loft",         area: "Surabaya",        type: "中層コンド",   launchQ: 4,  basePrice: 15, baseSqm: 19, basePace: 14.0, priceGrowth: .011, totalUnits: 300, siteArea: 8800 },
+  { name: "Bandung Valley Homes",     area: "Bandung",         type: "戸建",         launchQ: -1, basePrice: 11, baseSqm: 11, basePace: 8.0,  priceGrowth: .009, totalUnits: 150, siteArea: 64000 },
+  { name: "Dago Premier Hills",       area: "Bandung",         type: "タウンハウス", launchQ: 5,  basePrice: 16, baseSqm: 14, basePace: 4.5,  priceGrowth: .010, totalUnits: 130, siteArea: 46000 },
+  { name: "Canggu Ocean Villas",      area: "Bali",            type: "ヴィラ",       launchQ: 1,  basePrice: 62, baseSqm: 36, basePace: 3.0,  priceGrowth: .025, totalUnits: 64,  siteArea: 32000 },
+  { name: "Ubud Forest Retreat",      area: "Bali",            type: "ヴィラ",       launchQ: -2, basePrice: 45, baseSqm: 28, basePace: 2.4,  priceGrowth: .022, totalUnits: 44,  siteArea: 28000 },
+  { name: "Makassar Central Park",    area: "Makassar",        type: "中層コンド",   launchQ: 3,  basePrice: 10, baseSqm: 13, basePace: 9.5,  priceGrowth: .009, totalUnits: 235, siteArea: 11000 },
+];
+
+// ===== 四半期スナップショット生成（ダミー） =====
+// 実データに差し替える場合：この生成ロジックを消して、下と同じ形の
+// records = [{q:"2024Q1", name, area, type, avgPrice, sqmPrice, unitsPerMonth,
+//             absorptionRate, siteArea, soldPct, status}, ...] を入れるだけ
+function mulberry32(seed) {
+  return () => {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+const records = [];
+propertyMaster.forEach((p, i) => {
+  const rand = mulberry32(i * 1000 + 7);
+  let cumSold = Math.max(0, -p.launchQ) * p.basePace * 3 * 1.2; // タイムライン前の販売分
+  for (let q = 0; q < quarters.length; q++) {
+    if (q < p.launchQ) continue;          // 未発売
+    if (cumSold >= p.totalUnits) {        // 完売後は最終状態を保持
+      const last = records.findLast(r => r.name === p.name);
+      records.push({ ...last, q: quarters[q], status: "完売" });
+      continue;
+    }
+    const tSince = q - p.launchQ;
+    // 販売ペース：初期スパイク→減衰＋ゆらぎ
+    const pace = p.basePace * (0.55 + 0.9 * Math.exp(-0.22 * tSince)) * (0.85 + 0.3 * rand());
+    cumSold = Math.min(p.totalUnits, cumSold + pace * 3);
+    const priceMult = Math.pow(1 + p.priceGrowth, tSince) * (0.99 + 0.02 * rand());
+    const soldOutNow = cumSold >= p.totalUnits;
+    records.push({
+      q: quarters[q],
+      name: p.name, area: p.area, type: p.type,
+      avgPrice: +(p.basePrice * priceMult).toFixed(1),
+      sqmPrice: +(p.baseSqm * priceMult).toFixed(1),
+      unitsPerMonth: +pace.toFixed(1),
+      absorptionRate: +(pace / p.totalUnits * 100).toFixed(2),
+      siteArea: p.siteArea,
+      soldPct: +(cumSold / p.totalUnits * 100).toFixed(0),
+      status: soldOutNow ? "完売" : "販売中",
+    });
+  }
+});
+
+// ===== 表示設定 =====
+const IDR_OKU_TO_JPY_MAN = 93; // 1億ルピア ≒ 93万円（簡易換算）
+
+const metrics = {
+  avgPrice:       { label: "平均価格",     unit: "億ルピア",       fmt: ",.0f" },
+  sqmPrice:       { label: "㎡単価",       unit: "百万ルピア/㎡",  fmt: ",.0f" },
+  unitsPerMonth:  { label: "月間販売戸数", unit: "戸/月",          fmt: ",.1f" },
+  absorptionRate: { label: "月間消化率",   unit: "%/月",           fmt: ",.1f" },
+};
+
+const palettes = {
+  area: {
+    "Jakarta CBD": "#ff5e7d", "Jakarta Pusat": "#ff9d5c", "Jakarta Selatan": "#ffd166",
+    "Jakarta Utara": "#4f8cff", "Tangerang": "#00d4b8", "Bekasi": "#9d6bff",
+    "Depok": "#5ce1e6", "Bogor": "#7ed957", "Surabaya": "#f06292",
+    "Bandung": "#b39ddb", "Bali": "#26c6da", "Makassar": "#aab6c8",
+  },
+  type: {
+    "高層コンド": "#ff5e7d", "中層コンド": "#4f8cff", "タウンハウス": "#00d4b8",
+    "戸建": "#ffd166", "ヴィラ": "#9d6bff",
+  },
+};
+
+// 軸レンジは全期間で固定（アニメーション中に軸が動くと変化が読めないため）
+function axisRange(key) {
+  const vals = records.map(r => r[key]);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const pad = (max - min) * 0.12;
+  return [Math.max(0, min - pad), max + pad];
+}
+
+const sizeScale = (() => {
+  const vals = propertyMaster.map(p => p.siteArea);
+  const min = Math.sqrt(Math.min(...vals)), max = Math.sqrt(Math.max(...vals));
+  return a => 9 + 30 * (Math.sqrt(a) - min) / (max - min);
+})();
+
+let currentQ = 0;
+let playTimer = null;
+
+function render() {
+  const xKey = document.getElementById("xAxis").value;
+  const yKey = document.getElementById("yAxis").value;
+  const colorBy = document.getElementById("colorBy").value;
+  const sizeOn = document.getElementById("sizeOn").checked;
+  const showTrails = document.getElementById("showTrails").checked;
+  const showLabels = document.getElementById("showLabels").checked;
+  const showSoldOut = document.getElementById("showSoldOut").checked;
+
+  const qName = quarters[currentQ];
+  const colorMap = palettes[colorBy];
+  const snap = records.filter(r => r.q === qName && (showSoldOut || r.status === "販売中"));
+
+  const traces = [];
+
+  // --- 軌跡（販売開始〜現在の薄いライン） ---
+  if (showTrails) {
+    propertyMaster.forEach(p => {
+      const hist = records.filter(r => r.name === p.name && quarters.indexOf(r.q) <= currentQ && r.status === "販売中");
+      if (hist.length < 2) return;
+      if (!showSoldOut && !snap.some(s => s.name === p.name)) return;
+      traces.push({
+        type: "scatter", mode: "lines",
+        x: hist.map(r => r[xKey]),
+        y: hist.map(r => r[yKey]),
+        line: { color: colorMap[p[colorBy]] || "#aab6c8", width: 1.3, shape: "spline" },
+        opacity: 0.35,
+        hoverinfo: "skip",
+        showlegend: false,
+      });
+    });
+  }
+
+  // --- 現在時点のバブル（色分けグループごと） ---
+  const groups = {};
+  snap.forEach(r => {
+    const key = r.status === "完売" ? "完売" : r[colorBy];
+    (groups[key] = groups[key] || []).push(r);
+  });
+
+  Object.entries(groups).forEach(([key, items]) => {
+    const isSold = key === "完売";
+    traces.push({
+      name: key,
+      type: "scatter",
+      mode: showLabels ? "markers+text" : "markers",
+      x: items.map(r => r[xKey]),
+      y: items.map(r => r[yKey]),
+      text: items.map(r => r.name),
+      textposition: "top center",
+      textfont: { size: 9.5, color: "#aab6c8" },
+      hovertemplate:
+        "<b>%{customdata[0]}</b>（%{customdata[1]}）<br>" +
+        `${metrics[xKey].label}: %{x:${metrics[xKey].fmt}} ${metrics[xKey].unit}<br>` +
+        `${metrics[yKey].label}: %{y:${metrics[yKey].fmt}} ${metrics[yKey].unit}<br>` +
+        "敷地面積: %{customdata[2]:,.0f} ㎡<br>" +
+        "累計販売進捗: %{customdata[3]}%<br>" +
+        "平均価格 円換算: 約%{customdata[4]:,.0f}万円<br>" +
+        "%{customdata[5]}<extra></extra>",
+      customdata: items.map(r => [
+        r.name, qName, r.siteArea, r.soldPct,
+        r.avgPrice * IDR_OKU_TO_JPY_MAN,
+        `${r.area} / ${r.type}｜${r.status}`,
+      ]),
+      marker: {
+        size: items.map(r => sizeOn ? sizeScale(r.siteArea) : 13),
+        color: isSold ? "#5a6478" : (colorMap[key] || "#aab6c8"),
+        opacity: isSold ? 0.45 : 0.92,
+        line: { color: isSold ? "rgba(170,182,200,.4)" : "rgba(255,255,255,.4)", width: 1 },
+      },
+    });
+  });
+
+  const layout = {
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(8,12,22,.45)",
+    margin: { l: 64, r: 16, t: 14, b: 52 },
+    xaxis: {
+      title: { text: `${metrics[xKey].label}（${metrics[xKey].unit}）`, font: { size: 12, color: "#aab6c8" } },
+      range: axisRange(xKey),
+      gridcolor: "rgba(120,150,255,.12)",
+      zerolinecolor: "rgba(120,150,255,.2)",
+      tickfont: { size: 10, color: "#8a94ad" },
+    },
+    yaxis: {
+      title: { text: `${metrics[yKey].label}（${metrics[yKey].unit}）`, font: { size: 12, color: "#aab6c8" } },
+      range: axisRange(yKey),
+      gridcolor: "rgba(120,150,255,.12)",
+      zerolinecolor: "rgba(120,150,255,.2)",
+      tickfont: { size: 10, color: "#8a94ad" },
+    },
+    legend: {
+      orientation: "h", y: 1.06, x: 0,
+      font: { color: "#e8ecf6", size: 11 },
+      bgcolor: "rgba(0,0,0,0)",
+    },
+    hoverlabel: {
+      bgcolor: "rgba(10,14,24,.95)",
+      bordercolor: "rgba(79,140,255,.5)",
+      font: { color: "#e8ecf6", size: 12, family: "Inter, Noto Sans JP, sans-serif" },
+    },
+  };
+
+  Plotly.react("plot", traces, layout, { responsive: true, displaylogo: false });
+
+  // --- サマリー（現四半期） ---
+  const active = records.filter(r => r.q === qName && r.status === "販売中");
+  const soldCum = records.filter(r => r.q === qName && r.status === "完売").length;
+  const avg = (arr, key) => arr.length ? arr.reduce((s, r) => s + r[key], 0) / arr.length : 0;
+  document.getElementById("statsQ").textContent = `｜${qName}`;
+  document.getElementById("stats").innerHTML = [
+    [active.length + "件", "販売中物件"],
+    [soldCum + "件", "完売累計"],
+    [avg(active, "avgPrice").toFixed(0) + "億Rp", "平均価格"],
+    [avg(active, "unitsPerMonth").toFixed(1) + "戸/月", "平均販売速度"],
+  ].map(([v, k]) => `<div class="stat-card"><div class="v">${v}</div><div class="k">${k}</div></div>`).join("");
+
+  document.getElementById("currentQ").textContent = qName;
+  document.getElementById("timeSlider").value = currentQ;
+}
+
+// ===== タイムライン操作 =====
+function stopPlay() {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  document.getElementById("playBtn").textContent = "▶";
+}
+
+document.getElementById("playBtn").addEventListener("click", () => {
+  if (playTimer) { stopPlay(); return; }
+  if (currentQ >= quarters.length - 1) currentQ = 0;
+  document.getElementById("playBtn").textContent = "❚❚";
+  playTimer = setInterval(() => {
+    currentQ++;
+    if (currentQ >= quarters.length - 1) { currentQ = quarters.length - 1; stopPlay(); }
+    render();
+  }, 900);
+});
+
+document.getElementById("timeSlider").addEventListener("input", e => {
+  stopPlay();
+  currentQ = +e.target.value;
+  render();
+});
+
+["xAxis","yAxis","colorBy","sizeOn","showTrails","showLabels","showSoldOut"].forEach(id =>
+  document.getElementById(id).addEventListener("change", render)
+);
+
+// 目盛りラベル
+document.getElementById("tickLabels").innerHTML =
+  quarters.map(q => `<span>${q.replace("20", "'")}</span>`).join("");
+
+render();
+</script>
+
+</body>
+</html>
