@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>物件3Dプロット | 価格 × 販売スピード × ボリューム</title>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    background: #f4f6f9;
+    color: #1f2d3d;
+  }
+  header {
+    background: #1f2d3d;
+    color: #fff;
+    padding: 14px 24px;
+  }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header p { margin: 4px 0 0; font-size: 12px; color: #aebacb; }
+  .container {
+    display: flex;
+    gap: 16px;
+    padding: 16px 24px;
+    align-items: flex-start;
+  }
+  .panel {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: 16px;
+  }
+  .controls {
+    width: 280px;
+    flex-shrink: 0;
+  }
+  .controls h2 {
+    font-size: 13px;
+    margin: 0 0 12px;
+    color: #5b6b7f;
+    border-bottom: 1px solid #e4e9f0;
+    padding-bottom: 8px;
+  }
+  .control-group { margin-bottom: 16px; }
+  .control-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .axis-tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: #fff;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .tag-x { background: #e74c3c; }
+  .tag-y { background: #27ae60; }
+  .tag-z { background: #2980b9; }
+  select, input[type="range"] {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #ccd5e0;
+    border-radius: 6px;
+    font-size: 13px;
+    background: #fff;
+  }
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    margin-top: 6px;
+  }
+  #plot-wrap { flex: 1; min-width: 0; }
+  #plot { width: 100%; height: 78vh; }
+  .legend-note {
+    font-size: 11px;
+    color: #7a899b;
+    margin-top: 8px;
+    line-height: 1.6;
+  }
+  .stats {
+    font-size: 12px;
+    line-height: 1.8;
+    color: #44546a;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>物件 3Dプロット — 価格 × 販売スピード × ボリューム</h1>
+  <p>プロトタイプ v0.1（サンプルデータ20件）｜ドラッグで回転、ホイールでズーム、点にホバーで詳細表示</p>
+</header>
+
+<div class="container">
+  <div class="panel controls">
+    <h2>軸の設定</h2>
+
+    <div class="control-group">
+      <label><span class="axis-tag tag-x">X</span>価格</label>
+      <select id="xAxis">
+        <option value="avgPrice">平均価格（万円）</option>
+        <option value="tsuboPrice">坪単価（万円/坪）</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label><span class="axis-tag tag-y">Y</span>販売スピード</label>
+      <select id="yAxis">
+        <option value="unitsPerMonth">月間販売戸数（戸/月）</option>
+        <option value="monthsToSellout">完売所要月数（月）※小さいほど速い</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label><span class="axis-tag tag-z">Z</span>ボリューム</label>
+      <select id="zAxis">
+        <option value="totalUnits">総戸数（戸）</option>
+        <option value="siteArea">敷地面積（㎡）</option>
+      </select>
+    </div>
+
+    <h2>表示オプション</h2>
+
+    <div class="control-group">
+      <label>色分け</label>
+      <select id="colorBy">
+        <option value="area">エリア別</option>
+        <option value="status">販売ステータス別</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label>バブルサイズ</label>
+      <select id="sizeBy">
+        <option value="fixed">固定</option>
+        <option value="totalUnits">総戸数に比例</option>
+        <option value="siteArea">敷地面積に比例</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <div class="checkbox-row">
+        <input type="checkbox" id="showLabels">
+        <label for="showLabels" style="margin:0; font-weight:normal;">物件名を常時表示</label>
+      </div>
+    </div>
+
+    <h2>データ概要</h2>
+    <div class="stats" id="stats"></div>
+    <div class="legend-note">
+      ※ データはダミーです。実データ（CSV等）に差し替え可能。<br>
+      ※ 軸の定義・指標は壁打ちしながら調整してください。
+    </div>
+  </div>
+
+  <div class="panel" id="plot-wrap">
+    <div id="plot"></div>
+  </div>
+</div>
+
+<script>
+// ===== サンプルデータ =====
+// 実データに差し替える場合はこの配列を置き換えるだけでOK
+const properties = [
+  { name: "パークサイド品川",     area: "都心",   status: "完売",   avgPrice: 9800,  tsuboPrice: 520, unitsPerMonth: 12.5, monthsToSellout: 8,  totalUnits: 100, siteArea: 2400 },
+  { name: "グランタワー豊洲",     area: "湾岸",   status: "販売中", avgPrice: 8200,  tsuboPrice: 450, unitsPerMonth: 18.0, monthsToSellout: 25, totalUnits: 450, siteArea: 8500 },
+  { name: "シティテラス武蔵小杉", area: "城南",   status: "完売",   avgPrice: 7100,  tsuboPrice: 410, unitsPerMonth: 10.2, monthsToSellout: 22, totalUnits: 224, siteArea: 5100 },
+  { name: "レジデンス青山",       area: "都心",   status: "完売",   avgPrice: 15500, tsuboPrice: 780, unitsPerMonth: 4.5,  monthsToSellout: 12, totalUnits: 54,  siteArea: 1300 },
+  { name: "ガーデンズ浦和",       area: "埼玉",   status: "販売中", avgPrice: 5400,  tsuboPrice: 280, unitsPerMonth: 6.8,  monthsToSellout: 18, totalUnits: 120, siteArea: 4200 },
+  { name: "ブリリア晴海",         area: "湾岸",   status: "完売",   avgPrice: 8900,  tsuboPrice: 470, unitsPerMonth: 22.0, monthsToSellout: 30, totalUnits: 660, siteArea: 12000 },
+  { name: "プラウド吉祥寺",       area: "城西",   status: "完売",   avgPrice: 8600,  tsuboPrice: 460, unitsPerMonth: 5.5,  monthsToSellout: 14, totalUnits: 77,  siteArea: 2100 },
+  { name: "シーサイド千葉NT",     area: "千葉",   status: "販売中", avgPrice: 4200,  tsuboPrice: 195, unitsPerMonth: 4.0,  monthsToSellout: 35, totalUnits: 140, siteArea: 6800 },
+  { name: "ヒルズ横浜山手",       area: "神奈川", status: "完売",   avgPrice: 6800,  tsuboPrice: 350, unitsPerMonth: 7.2,  monthsToSellout: 13, totalUnits: 94,  siteArea: 3600 },
+  { name: "ステーションコート大宮", area: "埼玉", status: "完売",   avgPrice: 5900,  tsuboPrice: 310, unitsPerMonth: 9.5,  monthsToSellout: 16, totalUnits: 152, siteArea: 3900 },
+  { name: "リバーシティ北千住",   area: "城東",   status: "販売中", avgPrice: 5600,  tsuboPrice: 300, unitsPerMonth: 8.0,  monthsToSellout: 24, totalUnits: 190, siteArea: 4800 },
+  { name: "フォレスト多摩センター", area: "城西", status: "販売中", avgPrice: 4800,  tsuboPrice: 230, unitsPerMonth: 3.2,  monthsToSellout: 40, totalUnits: 128, siteArea: 7200 },
+  { name: "ベイフロント有明",     area: "湾岸",   status: "販売中", avgPrice: 7800,  tsuboPrice: 430, unitsPerMonth: 15.0, monthsToSellout: 28, totalUnits: 420, siteArea: 9300 },
+  { name: "サンクレスト柏の葉",   area: "千葉",   status: "完売",   avgPrice: 4900,  tsuboPrice: 240, unitsPerMonth: 7.5,  monthsToSellout: 20, totalUnits: 150, siteArea: 5500 },
+  { name: "アトラス神楽坂",       area: "都心",   status: "完売",   avgPrice: 11200, tsuboPrice: 620, unitsPerMonth: 3.8,  monthsToSellout: 10, totalUnits: 38,  siteArea: 900  },
+  { name: "オーシャンズ川崎",     area: "神奈川", status: "販売中", avgPrice: 6200,  tsuboPrice: 330, unitsPerMonth: 11.0, monthsToSellout: 21, totalUnits: 230, siteArea: 5600 },
+  { name: "グリーンヒル八王子",   area: "城西",   status: "販売中", avgPrice: 3900,  tsuboPrice: 180, unitsPerMonth: 2.5,  monthsToSellout: 45, totalUnits: 110, siteArea: 8800 },
+  { name: "ミッドタワー池袋",     area: "城北",   status: "完売",   avgPrice: 8400,  tsuboPrice: 455, unitsPerMonth: 13.0, monthsToSellout: 19, totalUnits: 250, siteArea: 3200 },
+  { name: "コンフォール船橋",     area: "千葉",   status: "完売",   avgPrice: 4500,  tsuboPrice: 215, unitsPerMonth: 5.8,  monthsToSellout: 17, totalUnits: 98,  siteArea: 4100 },
+  { name: "エクセレンス目黒",     area: "城南",   status: "販売中", avgPrice: 12800, tsuboPrice: 690, unitsPerMonth: 4.2,  monthsToSellout: 15, totalUnits: 62,  siteArea: 1500 },
+];
+
+// ===== 指標の定義（ラベル・単位） =====
+const metrics = {
+  avgPrice:        { label: "平均価格",     unit: "万円" },
+  tsuboPrice:      { label: "坪単価",       unit: "万円/坪" },
+  unitsPerMonth:   { label: "月間販売戸数", unit: "戸/月" },
+  monthsToSellout: { label: "完売所要月数", unit: "月" },
+  totalUnits:      { label: "総戸数",       unit: "戸" },
+  siteArea:        { label: "敷地面積",     unit: "㎡" },
+};
+
+const areaColors = {
+  "都心": "#e74c3c", "湾岸": "#2980b9", "城南": "#27ae60", "城西": "#8e44ad",
+  "城東": "#f39c12", "城北": "#16a085", "神奈川": "#d35400", "埼玉": "#2c3e50", "千葉": "#7f8c8d",
+};
+const statusColors = { "完売": "#27ae60", "販売中": "#2980b9" };
+
+function render() {
+  const xKey = document.getElementById("xAxis").value;
+  const yKey = document.getElementById("yAxis").value;
+  const zKey = document.getElementById("zAxis").value;
+  const colorBy = document.getElementById("colorBy").value;
+  const sizeBy = document.getElementById("sizeBy").value;
+  const showLabels = document.getElementById("showLabels").checked;
+
+  // 色分けカテゴリでトレースを分ける（凡例クリックで表示切替できるように）
+  const colorMap = colorBy === "area" ? areaColors : statusColors;
+  const groups = {};
+  properties.forEach(p => {
+    const key = colorBy === "area" ? p.area : p.status;
+    (groups[key] = groups[key] || []).push(p);
+  });
+
+  const sizeValues = p => {
+    if (sizeBy === "fixed") return 9;
+    const vals = properties.map(q => q[sizeBy]);
+    const min = Math.min(...vals), max = Math.max(...vals);
+    return 6 + 22 * (p[sizeBy] - min) / (max - min);
+  };
+
+  const traces = Object.entries(groups).map(([key, items]) => ({
+    name: key,
+    type: "scatter3d",
+    mode: showLabels ? "markers+text" : "markers",
+    x: items.map(p => p[xKey]),
+    y: items.map(p => p[yKey]),
+    z: items.map(p => p[zKey]),
+    text: items.map(p => p.name),
+    textposition: "top center",
+    textfont: { size: 9, color: "#44546a" },
+    hovertemplate:
+      "<b>%{customdata[0]}</b><br>" +
+      `${metrics[xKey].label}: %{x:,.0f} ${metrics[xKey].unit}<br>` +
+      `${metrics[yKey].label}: %{y:,.1f} ${metrics[yKey].unit}<br>` +
+      `${metrics[zKey].label}: %{z:,.0f} ${metrics[zKey].unit}<br>` +
+      "エリア: %{customdata[1]}｜%{customdata[2]}<extra></extra>",
+    customdata: items.map(p => [p.name, p.area, p.status]),
+    marker: {
+      size: items.map(p => sizeValues(p)),
+      color: colorMap[key] || "#95a5a6",
+      opacity: 0.85,
+      line: { color: "#fff", width: 0.5 },
+    },
+  }));
+
+  const layout = {
+    margin: { l: 0, r: 0, t: 10, b: 0 },
+    scene: {
+      xaxis: { title: { text: `${metrics[xKey].label}（${metrics[xKey].unit}）` }, gridcolor: "#dde4ec" },
+      yaxis: { title: { text: `${metrics[yKey].label}（${metrics[yKey].unit}）` }, gridcolor: "#dde4ec" },
+      zaxis: { title: { text: `${metrics[zKey].label}（${metrics[zKey].unit}）` }, gridcolor: "#dde4ec" },
+      camera: { eye: { x: 1.6, y: 1.6, z: 0.9 } },
+    },
+    legend: { orientation: "h", y: -0.02 },
+    hoverlabel: { bgcolor: "#1f2d3d", font: { color: "#fff", size: 12 } },
+  };
+
+  Plotly.react("plot", traces, layout, { responsive: true, displaylogo: false });
+
+  // 統計サマリ
+  const n = properties.length;
+  const avg = key => (properties.reduce((s, p) => s + p[key], 0) / n);
+  document.getElementById("stats").innerHTML =
+    `物件数: <b>${n}件</b><br>` +
+    `平均価格: <b>${avg("avgPrice").toLocaleString(undefined,{maximumFractionDigits:0})}万円</b><br>` +
+    `平均販売速度: <b>${avg("unitsPerMonth").toFixed(1)}戸/月</b><br>` +
+    `平均総戸数: <b>${avg("totalUnits").toFixed(0)}戸</b>`;
+}
+
+["xAxis","yAxis","zAxis","colorBy","sizeBy","showLabels"].forEach(id =>
+  document.getElementById(id).addEventListener("change", render)
+);
+render();
+</script>
+
+</body>
+</html>
